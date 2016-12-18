@@ -1,4 +1,4 @@
-OpenWrt LuCI for Shadowsocks-libev
+OpenWrt LuCI for Shadowsocks-libev edu_edition by cxm
 ===
 
 [![Download][download_badge]][download_url]
@@ -10,6 +10,15 @@ OpenWrt LuCI for Shadowsocks-libev
 
 本软件包是 [shadowsocks-libev][openwrt-shadowsocks] 的 LuCI 控制界面,
 方便用户控制和使用「透明代理」「SOCKS5 代理」「端口转发」功能.  
+
+Features
+---
+
+为了适应多server修改了部分内容，不保证所有功能的正确性。
+1. 可以添加backup Proxy，并可以导入ip列表，强制其使用备份代理
+（双IPV6代理，一个看youku，一个看youtube，省流量不解释）
+2. To be continue..
+
 
 软件包文件结构:
 ```
