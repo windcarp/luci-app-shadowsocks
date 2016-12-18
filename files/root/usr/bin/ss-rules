@@ -16,6 +16,7 @@ usage() {
 		    -l <local_port>         port number of shadowsocks local server
 		    -S <server_ips>         ip address of shadowsocks remote UDP server
 		    -L <local_port>         port number of shadowsocks local UDP server
+		    -p <bport>              backup redir local port
 		    -i <ip_list_file>       a file whose content is bypassed ip list
 		    -b <wan_ips>            wan ip of will be bypassed
 		    -w <wan_ips>            wan ip of will be forwarded
@@ -23,6 +24,7 @@ usage() {
 		    -d <target>             the default target of lan access control
 		    -a <lan_hosts>          lan ip of access control, need a prefix to
 		                            define proxy type
+		    -B <ip_use_bproxy>      wan ip of will use backup proxy
 		    -e <extra_options>      extra options for iptables
 		    -o                      apply the rules to the OUTPUT chain
 		    -O                      apply the global rules to the OUTPUT chain
@@ -62,9 +64,11 @@ ipset_init() {
 		create ss_spec_dst_sp hash:net hashsize 64
 		create ss_spec_dst_bp hash:net hashsize 64
 		create ss_spec_dst_fw hash:net hashsize 64
+		create ss_spec_dst_fw_bk hash:net hashsize 64
 		$(gen_lan_host_ipset_entry)
 		$(gen_special_purpose_ip | sed -e "s/^/add ss_spec_dst_sp /")
 		$(sed -e "s/^/add ss_spec_dst_bp /" ${IGNORED:=/dev/null} 2>/dev/null)
+		$(sed -e "s/^/add ss_spec_dst_fw_bk /" ${ip_use_bproxy:=/dev/null} 2>/dev/null)
 		$(for ip in $WAN_BP_IP; do echo "add ss_spec_dst_bp $ip"; done)
 		$(for ip in $WAN_FW_IP; do echo "add ss_spec_dst_fw $ip"; done)
 EOF
@@ -76,6 +80,8 @@ ipt_nat() {
 	ipt="iptables -t nat"
 	$ipt -A SS_SPEC_WAN_FW -p tcp \
 		-j REDIRECT --to-ports $local_port || return 1
+	$ipt -A SS_SPEC_WAN_F -p tcp \
+		-j REDIRECT --to-ports $bport || return 1
 	if [ -n "$OUTPUT" ]; then
 		$ipt -N SS_SPEC_WAN_DG
 		$ipt -A SS_SPEC_WAN_DG -m set --match-set ss_spec_dst_sp dst -j RETURN
@@ -160,12 +166,16 @@ include_ac_rules() {
 	:SS_SPEC_LAN_AC - [0:0]
 	:SS_SPEC_WAN_AC - [0:0]
 	:SS_SPEC_WAN_FW - [0:0]
+	:SS_SPEC_WAN_B - [0:0]
+	:SS_SPEC_WAN_F - [0:0]
 	-A SS_SPEC_LAN_DG -m set --match-set ss_spec_dst_sp dst -j RETURN
 	-A SS_SPEC_LAN_DG -p $protocol $EXT_ARGS -j SS_SPEC_LAN_AC
 	-A SS_SPEC_LAN_AC -m set --match-set ss_spec_src_bp src -j RETURN
 	-A SS_SPEC_LAN_AC -m set --match-set ss_spec_src_fw src -j SS_SPEC_WAN_FW
 	-A SS_SPEC_LAN_AC -m set --match-set ss_spec_src_ac src -j SS_SPEC_WAN_AC
 	-A SS_SPEC_LAN_AC -j ${LAN_TARGET:=SS_SPEC_WAN_AC}
+	-A SS_SPEC_WAN_B -m set --match-set ss_spec_dst_fw_bk dst -j SS_SPEC_WAN_F
+	-A SS_SPEC_WAN_B -j SS_SPEC_WAN_FW
 	-A SS_SPEC_WAN_AC -m set --match-set ss_spec_dst_fw dst -j SS_SPEC_WAN_FW
 	-A SS_SPEC_WAN_AC -m set --match-set ss_spec_dst_bp dst -j RETURN
 	-A SS_SPEC_WAN_AC -j SS_SPEC_WAN_FW
@@ -197,6 +207,12 @@ while getopts ":s:l:S:L:i:b:w:I:d:a:e:oOuUfh" arg; do
 			;;
 		i)
 			IGNORED=$OPTARG
+			;;
+		B）
+			ip_use_bproxy=$OPTARG
+			;;
+		p)
+			bport=$OPTARG
 			;;
 		b)
 			WAN_BP_IP=$OPTARG

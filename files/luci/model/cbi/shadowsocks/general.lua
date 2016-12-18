@@ -86,7 +86,37 @@ if has_redir then
 	o.datatype = "port"
 	o.default = 1234
 	o.rmempty = false
+
+
+	s = m:section(TypedSection, "transparent_bproxy", translate("Transparent Backup Proxy"))
+	s.anonymous = true
+
+	o = s:option(ListValue, "main_bserver", translate("Main Server"))
+	o:value("nil", translate("Disable"))
+	for _, s in ipairs(servers) do o:value(s.name, s.alias) end
+	o.default = "nil"
+	o.rmempty = false
+
+	o = s:option(ListValue, "udp_relay_bserver", translate("UDP-Relay Server"))
+	if has_udp_relay() then
+		o:value("nil", translate("Disable"))
+		o:value("same", translate("Same as Main Server"))
+		for _, s in ipairs(servers) do o:value(s.name, s.alias) end
+	else
+		o:value("nil", translate("Unusable - Missing iptables-mod-tproxy or ip"))
+	end
+	o.default = "nil"
+	o.rmempty = false
+
+	o = s:option(Value, "local_bport", translate("Local Port"))
+	o.datatype = "port"
+	o.default = 4321
+	o.rmempty = false
+
 end
+
+
+
 
 -- [[ SOCKS5 Proxy ]]--
 if has_local then
@@ -103,6 +133,21 @@ if has_local then
 	o.datatype = "port"
 	o.default = 1080
 	o.rmempty = false
+
+    s = m:section(TypedSection, "socks5_bproxy", translate("SOCKS5 Proxy"))
+    s.anonymous = true
+
+    o = s:option(ListValue, "server2", translate("Server"))
+    o:value("nil",translate("Disable"))
+    for _, s in ipairs(servers) do o:value(s.name, s.alias) end
+    o.default = "nil"
+    o.rmempty = false
+
+    o = s.option(Vlue, "local_port_2",translate("Local Port2"))
+    o.datatype = "port"
+    o.default = 1081
+    o.rmempty = false
+
 end
 
 -- [[ Port Forward ]]--

@@ -1,6 +1,18 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\n"
 
+msgid "Forwarded IP to port2"
+msgstr "使用备份代理IP列表"
+
+msgid "NULL - Do not use port2"
+msgstr "空则不使用备份代理"
+
+msgid "Transparent Backup Proxy"
+msgstr "备份透明代理"
+
+msgid "Local Port2"
+msgstr "备份代理端口"
+
 msgid "Access Control"
 msgstr "访问控制"
 

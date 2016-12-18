@@ -88,6 +88,8 @@ start_rules() {
 		-w "$(uci_get_by_type access_control wan_fw_ips)" \
 		-I "$(uci_get_by_type access_control lan_ifaces)" \
 		-d "$(uci_get_by_type access_control lan_target)" \
+		-p "$(uci_get_by_type transparent_bproxy local_bport 4321)" \
+		-B "$(uci_get_by_type access_control wan_fww_list)" \
 		-a "$(config_foreach get_lan_hosts lan_hosts)" \
 		-e "$(uci_get_by_type access_control ipt_ext)" \
 		$(get_arg_out) $(get_arg_udp)
@@ -104,7 +106,7 @@ rules() {
 start_redir() {
 	gen_config_file $1
 	ss-redir -c $CONFIG_FILE $2 $(get_arg_ota $1) \
-		-l $(uci_get_by_type transparent_proxy local_port 1234) \
+		-l $(uci_get_by_type transparent_proxy local_port 4321) \
 		-f /var/run/ss-redir$3.pid
 }
 
@@ -122,7 +124,24 @@ ss_redir() {
 	else
 		start_redir $main_server
 	fi
+
+	local backup_server=$(uci_get_by_type transparent_bproxy main_bserver)
+	valid_server $main_bserver || return 1
+	local udp_relay_bserver=$(uci_get_by_type transparent_bproxy udp_relay_bserver)
+	[ "$udp_relay_bserver" = "same" ] && udp_relay_bserver=$main_bserver
+	if [ "$udp_relay_bserver" = "$main_bserver" ]; then
+		start_redir $main_bserver -u
+	elif valid_server $udp_relay_bserver; then
+		start_redir $main_bserver
+		start_redir $udp_relay_bserver -U -udp
+	else
+		start_redir $main_bserver
+	fi
 }
+
+
+
+
 
 start_local() {
 	gen_config_file $1
@@ -131,10 +150,23 @@ start_local() {
 		-f /var/run/ss-local.pid
 }
 
+
+start_blocal() {
+	gen_config_file $1
+	ss-local -c $CONFIG_FILE -u $(get_arg_ota $1) $(get_arg_tfo $1) \
+		-l $(uci_get_by_type socks5_bproxy local_port 1081) \
+		-f /var/run/ss-local.pid
+}
+
+
 ss_local() {
 	command -v ss-local >/dev/null 2>&1 || return 0
 	local server=$(uci_get_by_type socks5_proxy server)
 	valid_server $server && start_local $server
+
+	local bserver=$(uci_get_by_type socks5_bproxy server)
+	valid_server $bserver && start_blocal $bserver
+
 }
 
 start_tunnel() {
