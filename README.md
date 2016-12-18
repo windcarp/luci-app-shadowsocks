@@ -14,9 +14,15 @@ OpenWrt LuCI for Shadowsocks-libev edu_edition by cxm
 Features
 ---
 
+感谢各位大大的付出。。为了适应我的环境做了几行修改，传上来做一个备份，原版见
+https://github.com/shadowsocks/luci-app-shadowsocks
+
 为了适应多server修改了部分内容，不保证所有功能的正确性。
+
 1. 可以添加backup Proxy，并可以导入ip列表，强制其使用备份代理
+
 （双IPV6代理，一个看youku，一个看youtube，省流量不解释）
+
 2. To be continue..
 
 
