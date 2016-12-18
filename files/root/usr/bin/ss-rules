@@ -33,6 +33,7 @@ usage() {
 		                            and ports for TCP and UDP
 		    -f                      flush the rules
 		    -h                      show this help message and exit
+		    use "iptables -t nat --list -v" to check IPTABLES
 EOF
 	exit $1
 }
@@ -80,8 +81,10 @@ ipt_nat() {
 	ipt="iptables -t nat"
 	$ipt -A SS_SPEC_WAN_FW -p tcp \
 		-j REDIRECT --to-ports $local_port || return 1
-	$ipt -A SS_SPEC_WAN_F -p tcp \
+	if [ $bport ]; then
+		$ipt -A SS_SPEC_WAN_F -p tcp \
 		-j REDIRECT --to-ports $bport || return 1
+	fi
 	if [ -n "$OUTPUT" ]; then
 		$ipt -N SS_SPEC_WAN_DG
 		$ipt -A SS_SPEC_WAN_DG -m set --match-set ss_spec_dst_sp dst -j RETURN
@@ -97,6 +100,7 @@ ipt_mangle() {
 		loger 4 "TPROXY or ip not found."
 		return 0
 	fi
+	
 	ip rule add fwmark 1 lookup 100
 	ip route add local default dev lo table 100
 	include_ac_rules mangle
@@ -166,16 +170,14 @@ include_ac_rules() {
 	:SS_SPEC_LAN_AC - [0:0]
 	:SS_SPEC_WAN_AC - [0:0]
 	:SS_SPEC_WAN_FW - [0:0]
-	:SS_SPEC_WAN_B - [0:0]
 	:SS_SPEC_WAN_F - [0:0]
 	-A SS_SPEC_LAN_DG -m set --match-set ss_spec_dst_sp dst -j RETURN
+	-A SS_SPEC_LAN_DG -m set --match-set ss_spec_dst_fw_bk dst -j SS_SPEC_WAN_F
 	-A SS_SPEC_LAN_DG -p $protocol $EXT_ARGS -j SS_SPEC_LAN_AC
 	-A SS_SPEC_LAN_AC -m set --match-set ss_spec_src_bp src -j RETURN
 	-A SS_SPEC_LAN_AC -m set --match-set ss_spec_src_fw src -j SS_SPEC_WAN_FW
 	-A SS_SPEC_LAN_AC -m set --match-set ss_spec_src_ac src -j SS_SPEC_WAN_AC
 	-A SS_SPEC_LAN_AC -j ${LAN_TARGET:=SS_SPEC_WAN_AC}
-	-A SS_SPEC_WAN_B -m set --match-set ss_spec_dst_fw_bk dst -j SS_SPEC_WAN_F
-	-A SS_SPEC_WAN_B -j SS_SPEC_WAN_FW
 	-A SS_SPEC_WAN_AC -m set --match-set ss_spec_dst_fw dst -j SS_SPEC_WAN_FW
 	-A SS_SPEC_WAN_AC -m set --match-set ss_spec_dst_bp dst -j RETURN
 	-A SS_SPEC_WAN_AC -j SS_SPEC_WAN_FW
@@ -191,7 +193,7 @@ gen_prerouting_rules() {
 	done
 }
 
-while getopts ":s:l:S:L:i:b:w:I:d:a:e:oOuUfh" arg; do
+while getopts ":s:l:S:L:i:b:w:I:d:a:e:p:B:oOuUfh" arg; do
 	case "$arg" in
 		s)
 			server=$(for ip in $OPTARG; do echo $ip; done)
@@ -207,13 +209,7 @@ while getopts ":s:l:S:L:i:b:w:I:d:a:e:oOuUfh" arg; do
 			;;
 		i)
 			IGNORED=$OPTARG
-			;;
-		B）
-			ip_use_bproxy=$OPTARG
-			;;
-		p)
-			bport=$OPTARG
-			;;
+			;;		
 		b)
 			WAN_BP_IP=$OPTARG
 			;;
@@ -231,6 +227,12 @@ while getopts ":s:l:S:L:i:b:w:I:d:a:e:oOuUfh" arg; do
 			;;
 		e)
 			EXT_ARGS=$OPTARG
+			;;
+		p)
+			bport=$OPTARG
+			;;
+		B)
+			ip_use_bproxy=$OPTARG
 			;;
 		o)
 			OUTPUT=SS_SPEC_WAN_AC

@@ -134,19 +134,19 @@ if has_local then
 	o.default = 1080
 	o.rmempty = false
 
-    s = m:section(TypedSection, "socks5_bproxy", translate("SOCKS5 Proxy"))
-    s.anonymous = true
+	s = m:section(TypedSection, "socks5_bproxy", translate("SOCKS5 Proxy Backup"))
+	s.anonymous = true
 
-    o = s:option(ListValue, "server2", translate("Server"))
-    o:value("nil",translate("Disable"))
-    for _, s in ipairs(servers) do o:value(s.name, s.alias) end
-    o.default = "nil"
-    o.rmempty = false
+	o = s:option(ListValue, "server", translate("Server"))
+	o:value("nil",translate("Disable"))
+	for _, s in ipairs(servers) do o:value(s.name, s.alias) end
+	o.default = "nil"
+	o.rmempty = false
 
-    o = s.option(Vlue, "local_port_2",translate("Local Port2"))
-    o.datatype = "port"
-    o.default = 1081
-    o.rmempty = false
+	o = s:option(Value, "local_port",translate("Local Port2"))
+	o.datatype = "port"
+	o.default = 1081
+	o.rmempty = false
 
 end
 

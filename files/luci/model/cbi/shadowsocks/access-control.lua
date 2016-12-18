@@ -28,11 +28,13 @@ o = s:option(DynamicList, "wan_fw_ips", translate("Forwarded IP"))
 o.datatype = "ip4addr"
 o.rmempty = true
 
-o = s:option(DynamicList, "wan_fww_list", translate("Forwarded IP to port2"))
-o.value("/dev/null",translate("NULL - Do not use port2"))
-o.datatype = "or(file,'dev/null')"
-o.defalut = "/dev/null"
+o = s:option(Value, "wan_fww_list", translate("Forwarded IP to port2"))
+o:value("/dev/null", translate("NULL - Do not use port2"))
+
+o.datatype = "or(file, '/dev/null')"
+o.default = "/dev/null"
 o.rmempty = false
+
 
 
 -- [[ Zone LAN ]]--

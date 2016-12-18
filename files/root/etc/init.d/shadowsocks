@@ -88,25 +88,53 @@ start_rules() {
 		-w "$(uci_get_by_type access_control wan_fw_ips)" \
 		-I "$(uci_get_by_type access_control lan_ifaces)" \
 		-d "$(uci_get_by_type access_control lan_target)" \
-		-p "$(uci_get_by_type transparent_bproxy local_bport 4321)" \
-		-B "$(uci_get_by_type access_control wan_fww_list)" \
 		-a "$(config_foreach get_lan_hosts lan_hosts)" \
 		-e "$(uci_get_by_type access_control ipt_ext)" \
 		$(get_arg_out) $(get_arg_udp)
 }
+
+start_brules() {
+	config_load $NAME
+	/usr/bin/ss-rules \
+		-s "$(config_foreach get_server_ips servers)" \
+		-l "$(uci_get_by_type transparent_proxy local_port 1234)" \
+		-i "$(uci_get_by_type access_control wan_bp_list)" \
+		-b "$(uci_get_by_type access_control wan_bp_ips)" \
+		-w "$(uci_get_by_type access_control wan_fw_ips)" \
+		-I "$(uci_get_by_type access_control lan_ifaces)" \
+		-d "$(uci_get_by_type access_control lan_target)" \
+		-a "$(config_foreach get_lan_hosts lan_hosts)" \
+		-e "$(uci_get_by_type access_control ipt_ext)" \
+		-p "$(uci_get_by_type transparent_bproxy local_bport 4321)" \
+		-B "$(uci_get_by_type access_control wan_fww_list)" \
+		$(get_arg_out) $(get_arg_udp)
+}
+
 
 rules() {
 	if !(pidof ss-redir >/dev/null); then
 		logger -st $NAME -p3 "ss-redir not running."
 		return 1
 	fi
-	start_rules || /usr/bin/ss-rules -f
+	local main_bserver=$(uci_get_by_type transparent_bproxy main_bserver)
+	if [ "$main_bserver" = "nil" ]; then
+		start_rules || /usr/bin/ss-rules -f
+	else
+		start_brules || /usr/bin/ss-rules -f
+	fi
 }
 
 start_redir() {
 	gen_config_file $1
 	ss-redir -c $CONFIG_FILE $2 $(get_arg_ota $1) \
-		-l $(uci_get_by_type transparent_proxy local_port 4321) \
+		-l $(uci_get_by_type transparent_proxy local_port 1234) \
+		-f /var/run/ss-redir$3.pid
+}
+
+start_bredir() {
+	gen_config_file $1
+	ss-redir -c $CONFIG_FILE $2 $(get_arg_ota $1) \
+		-l $(uci_get_by_type transparent_bproxy local_bport 4321) \
 		-f /var/run/ss-redir$3.pid
 }
 
@@ -125,23 +153,19 @@ ss_redir() {
 		start_redir $main_server
 	fi
 
-	local backup_server=$(uci_get_by_type transparent_bproxy main_bserver)
-	valid_server $main_bserver || return 1
+	local main_bserver=$(uci_get_by_type transparent_bproxy main_bserver)
+	valid_server $main_bserver || return 0
 	local udp_relay_bserver=$(uci_get_by_type transparent_bproxy udp_relay_bserver)
 	[ "$udp_relay_bserver" = "same" ] && udp_relay_bserver=$main_bserver
 	if [ "$udp_relay_bserver" = "$main_bserver" ]; then
-		start_redir $main_bserver -u
+		start_bredir $main_bserver -u
 	elif valid_server $udp_relay_bserver; then
-		start_redir $main_bserver
-		start_redir $udp_relay_bserver -U -udp
+		start_bredir $main_bserver
+		start_bredir $udp_relay_bserver -U -udp
 	else
-		start_redir $main_bserver
+		start_bredir $main_bserver
 	fi
 }
-
-
-
-
 
 start_local() {
 	gen_config_file $1

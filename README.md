@@ -23,7 +23,9 @@ https://github.com/shadowsocks/luci-app-shadowsocks
 
 （双IPV6代理，一个看youku，一个看youtube，省流量不解释）
 
-2. To be continue..
+2. To be continued
+
+
 
 
 软件包文件结构:
