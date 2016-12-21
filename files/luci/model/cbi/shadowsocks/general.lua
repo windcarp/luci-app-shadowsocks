@@ -169,6 +169,24 @@ if has_tunnel then
 	o = s:option(Value, "destination", translate("Destination"))
 	o.default = "8.8.4.4:53"
 	o.rmempty = false
+
+	s = m:section(TypedSection, "port_bforward", translate("Port Forward Backup"))
+	s.anonymous = true
+
+	o = s:option(ListValue, "bserver", translate("Backup Server"))
+	o:value("nil", translate("Disable"))
+	for _, s in ipairs(servers) do o:value(s.name, s.alias) end
+	o.default = "nil"
+	o.rmempty = false
+
+	o = s:option(Value, "local_bport", translate("Local Port"))
+	o.datatype = "port"
+	o.default = 5300
+	o.rmempty = false
+
+	o = s:option(Value, "bdestination", translate("Backup DNS query Destination"))
+	o.default = "8.8.4.4:53"
+	o.rmempty = false
 end
 
 return m
